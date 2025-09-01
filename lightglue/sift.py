@@ -56,10 +56,29 @@ def sift_to_rootsift(x: torch.Tensor, eps=1e-6) -> torch.Tensor:
     return torch.nn.functional.normalize(x, p=2, dim=-1, eps=eps)
 
 
+# def run_opencv_sift(features: cv2.Feature2D, image: np.ndarray) -> np.ndarray:
+#     """
+#     Detect keypoints using OpenCV Detector.
+#     Optionally, perform description.
+#     Args:
+#         features: OpenCV based keypoints detector and descriptor
+#         image: Grayscale image of uint8 data type
+#     Returns:
+#         keypoints: 1D array of detected cv2.KeyPoint
+#         scores: 1D array of responses
+#         descriptors: 1D array of descriptors
+#     """
+#     detections, descriptors = features.detectAndCompute(image, None)
+#     points = np.array([k.pt for k in detections], dtype=np.float32)
+#     scores = np.array([k.response for k in detections], dtype=np.float32)
+#     scales = np.array([k.size for k in detections], dtype=np.float32)
+#     angles = np.deg2rad(np.array([k.angle for k in detections], dtype=np.float32))
+#     return points, scores, scales, angles, descriptors
+
 def run_opencv_sift(features: cv2.Feature2D, image: np.ndarray) -> np.ndarray:
     """
-    Detect keypoints using OpenCV Detector.
-    Optionally, perform description.
+    Detect keypoints using OpenCV Detector and compute descriptors 
+    with orientation normalization bypassed.
     Args:
         features: OpenCV based keypoints detector and descriptor
         image: Grayscale image of uint8 data type
@@ -68,11 +87,17 @@ def run_opencv_sift(features: cv2.Feature2D, image: np.ndarray) -> np.ndarray:
         scores: 1D array of responses
         descriptors: 1D array of descriptors
     """
-    detections, descriptors = features.detectAndCompute(image, None)
-    points = np.array([k.pt for k in detections], dtype=np.float32)
-    scores = np.array([k.response for k in detections], dtype=np.float32)
-    scales = np.array([k.size for k in detections], dtype=np.float32)
-    angles = np.deg2rad(np.array([k.angle for k in detections], dtype=np.float32))
+    # Detect keypoints without computing descriptors
+    keypoints = features.detect(image, None)
+    # Bypass orientation normalization by setting angles to 0
+    for k in keypoints:
+        k.angle = 0  # Reset angle to avoid rotation normalization
+    # Compute descriptors with angles set to 0
+    descriptors = features.compute(image, keypoints)[1]  # [1] for descriptors
+    points = np.array([k.pt for k in keypoints], dtype=np.float32)
+    scores = np.array([k.response for k in keypoints], dtype=np.float32)
+    scales = np.array([k.size for k in keypoints], dtype=np.float32)
+    angles = np.deg2rad(np.array([k.angle for k in keypoints], dtype=np.float32))
     return points, scores, scales, angles, descriptors
 
 
